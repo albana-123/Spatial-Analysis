@@ -1,0 +1,13 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "landuse": "residential" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[19.8190, 41.3280], [19.8195, 41.3280], [19.8195, 41.3285], [19.8190, 41.3285], [19.8190, 41.3280]]]
+      }
+    }
+  ]
+}

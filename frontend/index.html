@@ -5,17 +5,20 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
   <link rel="stylesheet" href="style.css" />
 
+  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 </head>
 <body>
 
-<h3>🇦🇱 Spatial Analysis App - Albania</h3>
+<h3>🇦🇱 Spatial Analysis Web Map - Albania</h3>
+
 <div id="map"></div>
 
 <div id="queryBox">
@@ -27,44 +30,97 @@
     <option value="gpt">Ask GPT</option>
   </select>
 
-  <input id="userQuery" type="text" placeholder="Optional GPT prompt (e.g. buffer 100m and intersect)" size="60" />
+  <input id="userQuery" type="text" placeholder="Optional GPT prompt (e.g. buffer 100m and intersect with residential)" size="60" />
   <button onclick="askAI()">Run Analysis</button>
 </div>
 
 <script>
-  const map = L.map('map').setView([41.3275, 19.8189], 13); // Albania center
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  // Initialize map centered on Albania
+  const map = L.map('map').setView([41.3275, 19.8189], 13);
 
+  // Add OpenStreetMap tiles
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Feature groups
   let drawnItems = new L.FeatureGroup();
   map.addLayer(drawnItems);
 
-  const drawControl = new L.Control.Draw({ edit: { featureGroup: drawnItems } });
-  map.addControl(drawControl);
-
+  let buildingLayer, landuseLayer;
+  let buildingFeatures = [], landuseFeatures = [];
   let features = [];
 
+  // Drawing tools
+  const drawControl = new L.Control.Draw({
+    edit: { featureGroup: drawnItems }
+  });
+  map.addControl(drawControl);
+
+  // On draw create
   map.on(L.Draw.Event.CREATED, function (e) {
     const layer = e.layer;
     drawnItems.addLayer(layer);
     features.push(layer.toGeoJSON());
   });
 
+  // Load buildings GeoJSON
+  fetch("buildings-albania.geojson")
+    .then(res => res.json())
+    .then(data => {
+      buildingFeatures = data.features;
+      buildingLayer = L.geoJSON(data, {
+        style: { color: "gray", weight: 1 }
+      }).addTo(map);
+    });
+
+  // Load land use GeoJSON
+  fetch("landuse-albania.geojson")
+    .then(res => res.json())
+    .then(data => {
+      landuseFeatures = data.features;
+      landuseLayer = L.geoJSON(data, {
+        style: feature => {
+          const colorMap = {
+            residential: "green",
+            commercial: "blue",
+            industrial: "orange"
+          };
+          return {
+            color: colorMap[feature.properties.landuse] || "purple",
+            weight: 1,
+            fillOpacity: 0.2
+          };
+        }
+      }).addTo(map);
+    });
+
+  // Ask AI button
   async function askAI() {
-    const analysisType = document.getElementById('analysisType').value;
-    const question = document.getElementById('userQuery').value;
+    const analysisType = document.getElementById("analysisType").value;
+    const question = document.getElementById("userQuery").value;
 
-    if (features.length === 0) return alert("Draw at least one feature.");
+    if (features.length === 0) {
+      alert("Please draw at least one feature.");
+      return;
+    }
 
-    const response = await fetch('https://YOUR-BACKEND.onrender.com/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ features, question, analysisType })
+    const response = await fetch("https://spatial-analysis-backend.onrender.com/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        features,
+        question,
+        analysisType,
+        buildingFeatures,
+        landuseFeatures
+      })
     });
 
     const result = await response.json();
 
     if (result.analysisGeoJSON) {
-      L.geoJSON(result.analysisGeoJSON, { style: { color: 'blue' } }).addTo(map);
+      L.geoJSON(result.analysisGeoJSON, { style: { color: "red" } }).addTo(map);
     } else {
       alert(result.message || "No valid result returned.");
     }

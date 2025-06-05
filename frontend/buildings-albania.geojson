@@ -1,0 +1,13 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Tirana Building A" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[19.8185, 41.3278], [19.8188, 41.3278], [19.8188, 41.3281], [19.8185, 41.3281], [19.8185, 41.3278]]]
+      }
+    }
+  ]
+}
