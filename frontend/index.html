@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Spatial Analysis - Albania</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+  <link rel="stylesheet" href="style.css" />
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+</head>
+<body>
+
+<h3>🇦🇱 Spatial Analysis App - Albania</h3>
+<div id="map"></div>
+
+<div id="queryBox">
+  <label for="analysisType">Select Analysis:</label>
+  <select id="analysisType">
+    <option value="buffer">Buffer</option>
+    <option value="union">Union</option>
+    <option value="intersection">Intersection</option>
+    <option value="gpt">Ask GPT</option>
+  </select>
+
+  <input id="userQuery" type="text" placeholder="Optional GPT prompt (e.g. buffer 100m and intersect)" size="60" />
+  <button onclick="askAI()">Run Analysis</button>
+</div>
+
+<script>
+  const map = L.map('map').setView([41.3275, 19.8189], 13); // Albania center
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+  let drawnItems = new L.FeatureGroup();
+  map.addLayer(drawnItems);
+
+  const drawControl = new L.Control.Draw({ edit: { featureGroup: drawnItems } });
+  map.addControl(drawControl);
+
+  let features = [];
+
+  map.on(L.Draw.Event.CREATED, function (e) {
+    const layer = e.layer;
+    drawnItems.addLayer(layer);
+    features.push(layer.toGeoJSON());
+  });
+
+  async function askAI() {
+    const analysisType = document.getElementById('analysisType').value;
+    const question = document.getElementById('userQuery').value;
+
+    if (features.length === 0) return alert("Draw at least one feature.");
+
+    const response = await fetch('https://YOUR-BACKEND.onrender.com/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ features, question, analysisType })
+    });
+
+    const result = await response.json();
+
+    if (result.analysisGeoJSON) {
+      L.geoJSON(result.analysisGeoJSON, { style: { color: 'blue' } }).addTo(map);
+    } else {
+      alert(result.message || "No valid result returned.");
+    }
+  }
+</script>
+
+</body>
+</html>
